@@ -95,6 +95,10 @@ BIGFAMILY_SHARED=0 BIGFAMILY_DATA_DIR=/tmp/bigfamily-test-db npm start -- -p 318
 Дополнительные проверки: `python3 tests/orders.py http://127.0.0.1:3181` и `node tests/print-and-sync.mjs http://127.0.0.1:3181` (с теми же настройками Chromium). Проверяется сценарий 500 / 500 / 120 / 380, конкурентный повтор запроса, перенос старых копий, межвкладочное обновление и печать 121 варианта на нескольких листах.
 
 
+## Docker
+
+Для контейнерного запуска используйте `Dockerfile`, `compose.yaml` и `.env.example`; подробности — в [SELF_HOSTING_RU.md](./SELF_HOSTING_RU.md).
+
 ## Развёртывание без внешней базы
 
 Пошаговая инструкция самостоятельного запуска единого склада на сервере с постоянным диском и встроенной PGlite: [SELF_HOSTING_RU.md](./SELF_HOSTING_RU.md).
