@@ -159,6 +159,24 @@ export async function withStore<T>(
       c.release();
     }
   }
+  // Vercel serverless instances have ephemeral filesystems. Never report a
+  // successful write to a per-browser PGlite database that can disappear.
+  // Demo data may remain ephemeral; every real Vercel workspace must use the
+  // explicitly configured shared PostgreSQL owner store.
+  if (
+    process.env.VERCEL === "1" &&
+    !demo &&
+    !(
+      shared &&
+      process.env.BIGFAMILY_OWNER_LOCAL !== "1" &&
+      Boolean(process.env.DATABASE_URL)
+    )
+  )
+    fail(
+      "Постоянная база склада ещё не подключена. Владелец должен настроить PostgreSQL в Vercel.",
+      503,
+    );
+
   const schema = demo
     ? `bf_demo_orders_${todayISO().replaceAll("-", "")}`
     : shared
