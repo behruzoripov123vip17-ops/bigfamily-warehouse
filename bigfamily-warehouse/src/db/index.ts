@@ -142,19 +142,11 @@ export async function withStore<T>(
     process.env.BIGFAMILY_OWNER_LOCAL !== "1" &&
     databaseUrl
   ) {
-    // Supabase documents this query parameter for Transaction Pooler
-    // connections originating from Vercel serverless functions.
-    const poolerUrl = new URL(databaseUrl);
-    poolerUrl.searchParams.set("workaround", "supabase-pooler.vercel");
-    // pg-connection-string's sslmode=require overrides the explicit pg SSL
-    // options and makes Node verify the pooler's chain using its local CA set.
-    // Remove that parameter and explicitly request encrypted TLS. Supabase
-    // documents sslmode=require as encrypted transport without CA validation.
-    poolerUrl.searchParams.delete("sslmode");
-    poolerUrl.searchParams.delete("sslrootcert");
+    // Use the provider's connection string unchanged. Neon, Supabase and
+    // other PostgreSQL providers have different TLS/pooler requirements;
+    // rewriting query parameters can break valid Neon connection URLs.
     const pool = (g.bigfamilyPool ??= new Pool({
-      connectionString: poolerUrl.toString(),
-      ssl: { rejectUnauthorized: false },
+      connectionString: databaseUrl,
       max: 1,
     }));
     const c = await pool.connect();
