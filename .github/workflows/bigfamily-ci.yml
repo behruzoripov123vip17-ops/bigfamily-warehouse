@@ -1,0 +1,46 @@
+name: BIGFAMILY CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "bigfamily-warehouse/**"
+      - ".github/workflows/bigfamily-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "bigfamily-warehouse/**"
+      - ".github/workflows/bigfamily-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bigfamily-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Lint, types, production build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bigfamily-warehouse
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: bigfamily-warehouse/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
