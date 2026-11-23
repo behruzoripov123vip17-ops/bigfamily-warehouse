@@ -95,6 +95,19 @@ BIGFAMILY_SHARED=0 BIGFAMILY_DATA_DIR=/tmp/bigfamily-test-db npm start -- -p 318
 Дополнительные проверки: `python3 tests/orders.py http://127.0.0.1:3181` и `node tests/print-and-sync.mjs http://127.0.0.1:3181` (с теми же настройками Chromium). Проверяется сценарий 500 / 500 / 120 / 380, конкурентный повтор запроса, перенос старых копий, межвкладочное обновление и печать 121 варианта на нескольких листах.
 
 
+## Vercel: постоянное сохранение данных
+
+Vercel не предоставляет постоянный диск для PGlite. Для рабочего склада подключите PostgreSQL (например, Supabase или Neon) и используйте строку подключения из панели провайдера. В Vercel → Project → Settings → Environment Variables задайте:
+
+- `BIGFAMILY_SHARED=1`
+- `BIGFAMILY_OWNER_LOCAL=0`
+- `BIGFAMILY_PASSWORD` — сильный пароль владельца (не публикуйте его)
+- `DATABASE_URL` — PostgreSQL connection string. Также поддерживаются стандартные имена `POSTGRES_URL` и `POSTGRES_URL_NON_POOLING`.
+
+Для Supabase на Vercel предпочтительна строка Transaction Pooler; для Neon используйте рекомендованную провайдером строку подключения для serverless. Все переменные должны быть заданы для Production (и Preview, если вы проверяете там) и после изменения нужен новый Deploy.
+
+Перед подключением существующей базы сделайте резервную копию. Для новой пустой базы примените `sql/schema.sql` один раз. Не используйте PGlite на Vercel и не включайте `BIGFAMILY_OWNER_LOCAL=1`: это не даст надёжного постоянного хранения. После подключения проверьте создание товара, обновите страницу и откройте склад в другом браузере/устройстве. Если база ещё не подключена, приложение намеренно возвращает ошибку вместо ложного сообщения об успешном сохранении.
+
 ## Docker
 
 Для контейнерного запуска используйте `Dockerfile`, `compose.yaml` и `.env.example`; подробности — в [SELF_HOSTING_RU.md](./SELF_HOSTING_RU.md).
