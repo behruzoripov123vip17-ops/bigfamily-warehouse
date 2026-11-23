@@ -1,0 +1,48 @@
+{
+  "name": "bigfamily-warehouse",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack --hostname 0.0.0.0",
+    "build": "next build --webpack",
+    "start": "next start --hostname 0.0.0.0",
+    "lint": "eslint .",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test:browser": "node tests/browser.mjs",
+    "export:legacy": "node scripts/export-legacy.mjs",
+    "setup:owner": "node scripts/setup-owner.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.16",
+    "@fontsource-variable/manrope": "5.3.0",
+    "@fontsource-variable/unbounded": "5.3.0",
+    "chart.js": "^4.6.1",
+    "dotenv": "17.3.1",
+    "drizzle-orm": "0.45.2",
+    "lucide-react": "^1.61.0",
+    "next": "16.4.6",
+    "pg": "8.23.1",
+    "react": "19.2.9",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "19.2.9",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.1.17",
+    "@types/node": "22.19.15",
+    "@types/pg": "8.18.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "drizzle-kit": "0.31.10",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.4.6",
+    "playwright-core": "1.65.1",
+    "postcss": "8.5.8",
+    "prettier": "3.10.1",
+    "tailwindcss": "4.1.17",
+    "typescript": "5.9.3"
+  },
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}
