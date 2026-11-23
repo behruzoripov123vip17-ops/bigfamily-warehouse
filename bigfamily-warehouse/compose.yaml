@@ -6,7 +6,7 @@ services:
     container_name: bigfamily-warehouse
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.local
     environment:
       NODE_ENV: production
       BIGFAMILY_DATA_DIR: /app/data/postgres
