@@ -140,8 +140,11 @@ export async function withStore<T>(
     // connections originating from Vercel serverless functions.
     const poolerUrl = new URL(process.env.DATABASE_URL);
     poolerUrl.searchParams.set("workaround", "supabase-pooler.vercel");
+    // Supabase regional pooler certificate chain is not trusted by the Vercel Node runtime.
+    // TLS remains enabled; this bypasses certificate-chain validation for this fixed pooler host.
     const pool = (g.bigfamilyPool ??= new Pool({
       connectionString: poolerUrl.toString(),
+      ssl: { rejectUnauthorized: false },
       max: 5,
     }));
     const c = await pool.connect();
