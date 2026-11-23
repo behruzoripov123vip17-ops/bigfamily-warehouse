@@ -140,12 +140,16 @@ export async function withStore<T>(
     // connections originating from Vercel serverless functions.
     const poolerUrl = new URL(process.env.DATABASE_URL);
     poolerUrl.searchParams.set("workaround", "supabase-pooler.vercel");
-    // Supabase regional pooler certificate chain is not trusted by the Vercel Node runtime.
-    // TLS remains enabled; this bypasses certificate-chain validation for this fixed pooler host.
+    // pg-connection-string's sslmode=require overrides the explicit pg SSL
+    // options and makes Node verify the pooler's chain using its local CA set.
+    // Remove that parameter and explicitly request encrypted TLS. Supabase
+    // documents sslmode=require as encrypted transport without CA validation.
+    poolerUrl.searchParams.delete("sslmode");
+    poolerUrl.searchParams.delete("sslrootcert");
     const pool = (g.bigfamilyPool ??= new Pool({
       connectionString: poolerUrl.toString(),
       ssl: { rejectUnauthorized: false },
-      max: 5,
+      max: 1,
     }));
     const c = await pool.connect();
     try {
