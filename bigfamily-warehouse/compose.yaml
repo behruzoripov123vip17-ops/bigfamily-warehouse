@@ -1,0 +1,23 @@
+services:
+  bigfamily:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bigfamily-warehouse
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      BIGFAMILY_DATA_DIR: /app/data/postgres
+      BIGFAMILY_SHARED: "1"
+      BIGFAMILY_OWNER_LOCAL: "1"
+      NEXT_PUBLIC_WAREHOUSE_TZ: Asia/Tashkent
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - bigfamily_data:/app/data
+    init: true
+
+volumes:
+  bigfamily_data:
