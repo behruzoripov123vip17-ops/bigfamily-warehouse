@@ -75,10 +75,33 @@ export function respond(call: () => Promise<unknown>, status = 200) {
           },
           { status: 409 },
         );
-      console.error(
-        "[BIGFAMILY]",
-        code || (e instanceof Error ? e.name : "store-error"),
-      );
+      // Keep production diagnostics useful without ever logging request bodies,
+      // connection strings, passwords, or query parameter values.
+      const dbError = e as {
+        code?: string;
+        message?: string;
+        severity?: string;
+        detail?: string;
+        hint?: string;
+        where?: string;
+        routine?: string;
+      };
+      const safeText = (value: unknown) =>
+        typeof value === "string"
+          ? value
+              .replace(/postgres(?:ql)?:\\/\\/[^\\s]+/gi, "[redacted-connection]")
+              .replace(/password\\s*[=:]\\s*[^\\s,;]+/gi, "password=[redacted]")
+              .slice(0, 500)
+          : undefined;
+      console.error("[BIGFAMILY]", {
+        code: code || "store-error",
+        message: safeText(dbError.message || (e instanceof Error ? e.name : "store-error")),
+        severity: safeText(dbError.severity),
+        detail: safeText(dbError.detail),
+        hint: safeText(dbError.hint),
+        where: safeText(dbError.where),
+        routine: safeText(dbError.routine),
+      });
       return Response.json(
         {
           error:
