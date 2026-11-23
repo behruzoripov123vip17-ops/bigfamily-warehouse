@@ -15,6 +15,7 @@ const g = globalThis as typeof globalThis & {
   bigfamilyDb?: Promise<PGlite>;
   bigfamilyReady?: Set<string>;
   bigfamilyPool?: Pool;
+  bigfamilyPgReady?: Promise<void>;
   bigfamilySchema?: Promise<string>;
 };
 async function localDB() {
@@ -129,28 +130,80 @@ export async function withStore<T>(
       "Сейчас открыт пример. Перейди в «Мой склад» или «Вход владельца», чтобы вести свои записи.",
       403,
     );
+  // Vercel Marketplace integrations expose different variable names. Prefer the
+  // canonical DATABASE_URL, then the standard Vercel Postgres aliases.
+  const databaseUrl =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_URL_NON_POOLING;
   // Connecting to an external PostgreSQL database is ALWAYS an explicit opt-in.
   if (
     !demo &&
     shared &&
     process.env.BIGFAMILY_OWNER_LOCAL !== "1" &&
-    process.env.DATABASE_URL
+    databaseUrl
   ) {
-    // Supabase documents this query parameter for Transaction Pooler
-    // connections originating from Vercel serverless functions.
-    const poolerUrl = new URL(process.env.DATABASE_URL);
-    poolerUrl.searchParams.set("workaround", "supabase-pooler.vercel");
-    // pg-connection-string's sslmode=require overrides the explicit pg SSL
-    // options and makes Node verify the pooler's chain using its local CA set.
-    // Remove that parameter and explicitly request encrypted TLS. Supabase
-    // documents sslmode=require as encrypted transport without CA validation.
-    poolerUrl.searchParams.delete("sslmode");
-    poolerUrl.searchParams.delete("sslrootcert");
+    // Use the provider's connection string unchanged. Neon, Supabase and
+    // other PostgreSQL providers have different TLS/pooler requirements;
+    // rewriting query parameters can break valid Neon connection URLs.
     const pool = (g.bigfamilyPool ??= new Pool({
-      connectionString: poolerUrl.toString(),
-      ssl: { rejectUnauthorized: false },
+      connectionString: databaseUrl,
       max: 1,
     }));
+    // Initialize the warehouse schema on the first serverless connection.
+    // The DDL is additive/idempotent so repeated cold starts are safe.
+    if (!g.bigfamilyPgReady) {
+      g.bigfamilyPgReady = (async () => {
+        const client = await pool.connect();
+        try {
+          await client.query("BEGIN");
+          await client.query(
+            "SELECT pg_advisory_xact_lock(hashtext('bigfamily-warehouse-schema-v1'))",
+          );
+          await client.query(`CREATE TABLE IF NOT EXISTS products (
+            id serial PRIMARY KEY, article text NOT NULL, size text NOT NULL,
+            color text NOT NULL, name text NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now(), archived_at timestamptz
+          )`);
+          await client.query(`CREATE TABLE IF NOT EXISTS movements (
+            id serial PRIMARY KEY,
+            product_id integer NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+            type text NOT NULL CHECK(type IN ('in','out')),
+            qty integer NOT NULL CHECK(qty>0),
+            channel text NOT NULL CHECK(channel IN ('wb','ozon','other')),
+            note text NOT NULL DEFAULT '', day date NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now(), cancelled_at timestamptz
+          )`);
+          await client.query("ALTER TABLE products ADD COLUMN IF NOT EXISTS archived_at timestamptz");
+          await client.query("ALTER TABLE movements ADD COLUMN IF NOT EXISTS cancelled_at timestamptz");
+          await client.query("CREATE UNIQUE INDEX IF NOT EXISTS products_article_size_color_uq ON products(article,size,color)");
+          await client.query("CREATE INDEX IF NOT EXISTS movements_product_idx ON movements(product_id)");
+          await client.query("CREATE INDEX IF NOT EXISTS movements_day_idx ON movements(day)");
+          await client.query(`CREATE TABLE IF NOT EXISTS order_batches (
+            id serial PRIMARY KEY, day date NOT NULL,
+            channel text NOT NULL CHECK(channel IN ('wb','ozon')),
+            orders_count integer NOT NULL CHECK(orders_count>0),
+            note text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(),
+            cancelled_at timestamptz
+          )`);
+          await client.query("CREATE INDEX IF NOT EXISTS order_batches_day_idx ON order_batches(day,id DESC)");
+          await client.query(`CREATE TABLE IF NOT EXISTS write_receipts (
+            request_key text PRIMARY KEY, payload_hash text NOT NULL,
+            response_body jsonb, created_at timestamptz NOT NULL DEFAULT now()
+          )`);
+          await client.query("COMMIT");
+        } catch (error) {
+          await client.query("ROLLBACK");
+          throw error;
+        } finally {
+          client.release();
+        }
+      })().catch((error) => {
+        g.bigfamilyPgReady = undefined;
+        throw error;
+      });
+    }
+    await g.bigfamilyPgReady;
     const c = await pool.connect();
     try {
       await c.query(
@@ -180,7 +233,7 @@ export async function withStore<T>(
     !(
       shared &&
       process.env.BIGFAMILY_OWNER_LOCAL !== "1" &&
-      Boolean(process.env.DATABASE_URL)
+      Boolean(databaseUrl)
     )
   )
     fail(
