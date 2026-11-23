@@ -136,8 +136,12 @@ export async function withStore<T>(
     process.env.BIGFAMILY_OWNER_LOCAL !== "1" &&
     process.env.DATABASE_URL
   ) {
+    // Supabase documents this query parameter for Transaction Pooler
+    // connections originating from Vercel serverless functions.
+    const poolerUrl = new URL(process.env.DATABASE_URL);
+    poolerUrl.searchParams.set("workaround", "supabase-pooler.vercel");
     const pool = (g.bigfamilyPool ??= new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: poolerUrl.toString(),
       max: 5,
     }));
     const c = await pool.connect();
