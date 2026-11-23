@@ -89,8 +89,8 @@ export function respond(call: () => Promise<unknown>, status = 200) {
       const safeText = (value: unknown) =>
         typeof value === "string"
           ? value
-              .replace(/postgres(?:ql)?:\\/\\/[^\\s]+/gi, "[redacted-connection]")
-              .replace(/password\\s*[=:]\\s*[^\\s,;]+/gi, "password=[redacted]")
+              .replace(/postgres(?:ql)?:\/\/[^\s]+/gi, "[redacted-connection]")
+              .replace(/password\s*[=:]\s*[^\s,;]+/gi, "password=[redacted]")
               .slice(0, 500)
           : undefined;
       console.error("[BIGFAMILY]", {
