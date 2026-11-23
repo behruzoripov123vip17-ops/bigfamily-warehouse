@@ -129,16 +129,22 @@ export async function withStore<T>(
       "Сейчас открыт пример. Перейди в «Мой склад» или «Вход владельца», чтобы вести свои записи.",
       403,
     );
+  // Vercel Marketplace integrations expose different variable names. Prefer the
+  // canonical DATABASE_URL, then the standard Vercel Postgres aliases.
+  const databaseUrl =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_URL_NON_POOLING;
   // Connecting to an external PostgreSQL database is ALWAYS an explicit opt-in.
   if (
     !demo &&
     shared &&
     process.env.BIGFAMILY_OWNER_LOCAL !== "1" &&
-    process.env.DATABASE_URL
+    databaseUrl
   ) {
     // Supabase documents this query parameter for Transaction Pooler
     // connections originating from Vercel serverless functions.
-    const poolerUrl = new URL(process.env.DATABASE_URL);
+    const poolerUrl = new URL(databaseUrl);
     poolerUrl.searchParams.set("workaround", "supabase-pooler.vercel");
     // pg-connection-string's sslmode=require overrides the explicit pg SSL
     // options and makes Node verify the pooler's chain using its local CA set.
@@ -180,7 +186,7 @@ export async function withStore<T>(
     !(
       shared &&
       process.env.BIGFAMILY_OWNER_LOCAL !== "1" &&
-      Boolean(process.env.DATABASE_URL)
+      Boolean(databaseUrl)
     )
   )
     fail(
